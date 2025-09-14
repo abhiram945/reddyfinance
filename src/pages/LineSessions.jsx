@@ -203,7 +203,7 @@ const LineSessions = () => {
         onClick={handlePlusClick}
         className="fixed right-5 bottom-5 w-14 h-14 rounded-full bg-white shadow-2xl shadow-emerald-600 flex items-center justify-center transition cursor-pointer"
       >
-        <img className="w-10 h-10" src="/plus.svg" alt="add-entry" />
+        <img className="w-10 h-10" src={`${import.meta.env.BASE_URL}plus.svg`} alt="add-entry" />
       </button>
 
       {/* Modal */}

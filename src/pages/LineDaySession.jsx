@@ -151,7 +151,7 @@ export default function LineDaySession() {
                         className="w-8 h-8 ml-4 bg-white rounded-full p-1 cursor-pointer"
                         aria-label="Add Borrower"
                     >
-                        <img src="/plus.svg" alt="Add Borrower" className="w-full h-full" />
+                        <img src={`${import.meta.env.BASE_URL}plus.svg`} alt="Add Borrower" className="w-full h-full" />
                     </button>
                 </div>
             </div>
