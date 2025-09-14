@@ -5,7 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 const App = () => {
   return (
-    <Router>
+    <Router basename="/reddyfinance">
       <Routes>
         <Route path="/" element={<LineSessions />} />
         <Route path="/:line/:day/:session" element={<LineDaySession />} />
