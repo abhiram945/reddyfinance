@@ -1,108 +1,142 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AddLinePopUp from "../components/AddLinePopUp";
+import DualCircleLoader from "../components/DualCircleLoader"
+import { db } from "../firebase";
+import { collection, getDocs, addDoc, updateDoc, doc } from "firebase/firestore";
 
 const LineSessions = () => {
-  const days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const sessions = ["morning", "afternoon"];
-  const [entries, setEntries] = useState({
-    "line-1": {
-      password: "1234",
-      days: {
-        "monday": {
-          sessions: ["morning"]
-        }
-      }
-    },
-    "line-2": {
-      password: "5678",
-      days: {
-        "tuesday": {
-          sessions: ["afternoon"]
-        }
-      }
-    }
-  });
+  const [entries, setEntries] = useState({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState('lines');
-  const [selectedLine, setSelectedLine] = useState(null);
+  const [selectedLineId, setSelectedLineId] = useState(null); // Firestore doc id
   const [selectedDay, setSelectedDay] = useState(null);
   const [addMode, setAddMode] = useState('line'); // 'line', 'day', 'session'
+  const [loading, setLoading] = useState("")
   const navigate = useNavigate();
 
-  // Add functions
-  const addLine = (line, password) => {
-    setEntries({
-      ...entries,
-      [line]: { password, days: {} }
-    });
+  const fetchLines = async () => {
+    try {
+      setLoading("fetchingLines")
+      const linesCol = collection(db, "lines");
+      const linesSnapshot = await getDocs(linesCol);
+      const linesData = {};
+      linesSnapshot.forEach(docSnap => {
+        linesData[docSnap.id] = docSnap.data();
+      });
+      setEntries(linesData);
+    } catch (error) {
+      alert(error.message || error)
+    } finally {
+      setLoading("")
+    }
   };
 
-  const addDay = (line, day) => {
-    setEntries({
-      ...entries,
-      [line]: {
-        ...entries[line],
-        days: {
-          ...entries[line].days,
-          [day]: { sessions: [] }
+  useEffect(() => {
+    fetchLines();
+  }, []);
+
+  const addLine = async (line, password) => {
+    setLoading("addLine");
+    try {
+      const docRef = await addDoc(collection(db, "lines"), {
+        line,
+        password,
+        days: {}
+      });
+      setEntries(prev => ({
+        ...prev,
+        [docRef.id]: { line, password, days: {} }
+      }));
+    } catch (error) {
+      alert(error.message || error);
+    } finally {
+      setLoading("");
+    }
+  };
+
+  const addDay = async (lineId, day) => {
+    setLoading("addDay");
+    try {
+      const lineRef = doc(db, "lines", lineId);
+      const lineData = entries[lineId];
+      const newDays = { ...lineData.days, [day]: { sessions: [], startDate: null } };
+      await updateDoc(lineRef, { days: newDays });
+      setEntries(prev => ({
+        ...prev,
+        [lineId]: {
+          ...prev[lineId],
+          days: newDays
         }
-      }
-    });
+      }));
+    } catch (error) {
+      alert(error.message || error);
+    } finally {
+      setLoading("");
+    }
   };
 
-  const addSession = (line, day, session) => {
-    const newSessions = [...(entries[line].days[day].sessions || []), session];
-    setEntries({
-      ...entries,
-      [line]: {
-        ...entries[line],
-        days: {
-          ...entries[line].days,
-          [day]: { sessions: newSessions }
+  const addSession = async (lineId, day, session) => {
+    setLoading("addSession");
+    try {
+      const lineRef = doc(db, "lines", lineId);
+      const lineData = entries[lineId];
+      const prevDay = lineData.days[day] || { sessions: [], startDate: null };
+      const newSessions = [...(prevDay.sessions || []), session];
+      const newDays = { ...lineData.days, [day]: { ...prevDay, sessions: newSessions } };
+      await updateDoc(lineRef, { days: newDays });
+      setEntries(prev => ({
+        ...prev,
+        [lineId]: {
+          ...prev[lineId],
+          days: newDays
         }
-      }
-    });
+      }));
+    } catch (error) {
+      alert(error.message || error);
+    } finally {
+      setLoading("");
+    }
   };
 
-  const onAdd = (data) => {
+  const onAdd = async (data) => {
     if (addMode === 'line') {
-      addLine(data.line, data.password);
+      await addLine(data.line, data.password);
     } else if (addMode === 'day') {
-      addDay(selectedLine, data.day);
+      await addDay(selectedLineId, data.day);
     } else if (addMode === 'session') {
-      addSession(selectedLine, selectedDay, data.session);
+      await addSession(selectedLineId, selectedDay, data.session);
     }
     setIsModalOpen(false);
   };
 
-  // Handle line click: prompt password
-  const handleLineClick = (line) => {
-    const userPwd = window.prompt(`Enter password for ${line}:`);
-    if (entries[line] && entries[line].password === userPwd) {
-      setSelectedLine(line);
+  const handleLineClick = (id) => {
+    const entry = entries[id];
+    const userPwd = window.prompt(`Enter password for ${entry.line}:`);
+    if (entry && entry.password === userPwd) {
+      setSelectedLineId(id);
       setCurrentView('days');
     } else {
       window.alert("Incorrect password");
     }
   };
 
-  // Handle day click
   const handleDayClick = (day) => {
     setSelectedDay(day);
     setCurrentView('sessions');
   };
 
-  // Handle session click
   const handleSessionClick = (session) => {
-    navigate(`/${encodeURIComponent(selectedLine)}/${selectedDay}/${session}`);
+  const lineName = entries[selectedLineId]?.line || '';
+  navigate(`/${selectedLineId}-${lineName}/${selectedDay}/${session}`);
   };
 
-  // Back handlers
   const backToLines = () => {
     setCurrentView('lines');
-    setSelectedLine(null);
+    setSelectedLineId(null);
     setSelectedDay(null);
   };
 
@@ -111,16 +145,10 @@ const LineSessions = () => {
     setSelectedDay(null);
   };
 
-  // Get unique lines
-  const uniqueLines = Object.keys(entries);
+  const uniqueLines = Object.entries(entries).map(([id, e]) => ({ id, line: e.line }));
+  const daysForLine = selectedLineId && entries[selectedLineId]?.days ? Object.keys(entries[selectedLineId].days) : [];
+  const sessionsForDay = selectedLineId && selectedDay && entries[selectedLineId]?.days?.[selectedDay]?.sessions ? entries[selectedLineId].days[selectedDay].sessions : [];
 
-  // Get days for selected line
-  const daysForLine = selectedLine ? Object.keys(entries[selectedLine].days) : [];
-
-  // Get sessions for selected line and day
-  const sessionsForDay = selectedLine && selectedDay ? entries[selectedLine].days[selectedDay].sessions : [];
-
-  // Handle plus button click
   const handlePlusClick = () => {
     if (currentView === 'lines') {
       setAddMode('line');
@@ -140,22 +168,27 @@ const LineSessions = () => {
         </h1>
         <p className="mt-2 text-gray-600">
           {currentView === 'lines' && 'Select a line'}
-          {currentView === 'days' && `Days for ${selectedLine}`}
-          {currentView === 'sessions' && `Sessions for ${selectedLine} on ${selectedDay}`}
+          {currentView === 'days' && `Days for ${selectedLineId && entries[selectedLineId]?.line ? entries[selectedLineId].line.toUpperCase() : ''}`}
+          {currentView === 'sessions' && `Sessions for ${selectedLineId && entries[selectedLineId]?.line ? entries[selectedLineId].line.toUpperCase() : ''} on ${selectedDay || ''}`}
         </p>
       </div>
-
-      {/* Conditional rendering based on currentView */}
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-4">
-        {currentView === 'lines' && uniqueLines.map((line) => (
-          <button
-            key={line}
-            onClick={() => handleLineClick(line)}
-            className="py-3 px-4 bg-emerald-50 rounded-lg text-emerald-700 text-lg md:text-xl text-center font-medium hover:bg-emerald-600 hover:text-white transition-all duration-200"
-          >
-            {line.toUpperCase()}
-          </button>
-        ))}
+      {loading === "fetchingLines" && <DualCircleLoader />}
+      {loading === "" && <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-4">
+        {currentView === 'lines' && (
+          uniqueLines.length === 0 ? (
+            <h2>No lines found. Add a new line.</h2>
+          ) : (
+            uniqueLines.map(({ id, line }) => (
+              <button
+                key={id}
+                onClick={() => handleLineClick(id)}
+                className="py-3 px-4 bg-emerald-50 rounded-lg text-emerald-700 text-lg md:text-xl text-center font-medium hover:bg-emerald-600 hover:text-white transition-all duration-200"
+              >
+                {line.toUpperCase()}
+              </button>
+            ))
+          )
+        )}
 
         {currentView === 'days' && (
           <>
@@ -165,15 +198,19 @@ const LineSessions = () => {
             >
               ← Back to Lines
             </button>
-            {daysForLine.map((day) => (
-              <button
-                key={day}
-                onClick={() => handleDayClick(day)}
-                className="py-3 px-4 bg-emerald-50 rounded-lg text-emerald-700 text-lg md:text-xl text-center font-medium hover:bg-emerald-600 hover:text-white transition-all duration-200"
-              >
-                {day.charAt(0).toUpperCase() + day.slice(1)}
-              </button>
-            ))}
+            {daysForLine.length === 0 ? (
+              <h2>No days found. Add a new day.</h2>
+            ) : (
+              daysForLine.map((day) => (
+                <button
+                  key={day}
+                  onClick={() => handleDayClick(day)}
+                  className="py-3 px-4 bg-emerald-50 rounded-lg text-emerald-700 text-lg md:text-xl text-center font-medium hover:bg-emerald-600 hover:text-white transition-all duration-200"
+                >
+                  {day.charAt(0).toUpperCase() + day.slice(1)}
+                </button>
+              ))
+            )}
           </>
         )}
 
@@ -185,7 +222,7 @@ const LineSessions = () => {
             >
               ← Back to Days
             </button>
-            {sessionsForDay.map((session) => (
+            {sessionsForDay.length===0 ? <h2>No sessions found. Add a new session.</h2> :sessionsForDay.map((session) => (
               <button
                 key={session}
                 onClick={() => handleSessionClick(session)}
@@ -196,9 +233,8 @@ const LineSessions = () => {
             ))}
           </>
         )}
-      </div>
+      </div>}
 
-      {/* Add button */}
       <button
         onClick={handlePlusClick}
         className="fixed right-5 bottom-5 w-14 h-14 rounded-full bg-white shadow-2xl shadow-emerald-600 flex items-center justify-center transition cursor-pointer"
@@ -206,9 +242,9 @@ const LineSessions = () => {
         <img className="w-10 h-10" src={`${import.meta.env.BASE_URL}plus.svg`} alt="add-entry" />
       </button>
 
-      {/* Modal */}
       {isModalOpen && (
         <AddLinePopUp
+          loading={loading}
           onSubmit={onAdd}
           days={days}
           sessions={sessions}

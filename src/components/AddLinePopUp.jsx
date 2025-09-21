@@ -1,33 +1,23 @@
 import { useState } from "react";
-
-const AddLinePopUp = ({ onSubmit, days, sessions, setIsModalOpen, addMode }) => {
-  const [formData, setFormData] = useState({
+import SimpleLoader from "../components/SimpleLoader"
+const AddLinePopUp = ({ loading, onSubmit, days, sessions, setIsModalOpen, addMode }) => {
+  const defaultForm = {
     line: "",
     day: days[0],
     session: sessions[0],
     password: "",
-  });
-
-  const handleSubmit = (e) => {
+  }
+  const [formData, setFormData] = useState(defaultForm);
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    await onSubmit(formData);
     setIsModalOpen(false);
-    setFormData({
-      line: "",
-      day: days[0],
-      session: sessions[0],
-      password: "",
-    });
+    setFormData(defaultForm);
   };
 
   const handleCancel = () => {
     setIsModalOpen(false);
-    setFormData({
-      line: "",
-      day: days[0],
-      session: sessions[0],
-      password: "",
-    });
+    setFormData(defaultForm);
   };
 
   let title = "";
@@ -106,11 +96,12 @@ const AddLinePopUp = ({ onSubmit, days, sessions, setIsModalOpen, addMode }) => 
               disabled={
                 (addMode === "line" && (!formData.line || !formData.password)) ||
                 (addMode === "day" && !formData.day) ||
-                (addMode === "session" && !formData.session)
+                (addMode === "session" && !formData.session) ||
+                loading
               }
               className="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              Add
+              {loading ? <SimpleLoader/> : "Add"}
             </button>
           </div>
         </form>
