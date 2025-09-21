@@ -126,18 +126,19 @@ export default function LineDaySession() {
 
     return (
         <div className="w-screen h-screen flex flex-col bg-white relative">
-            <div className="sticky top-0 z-20 flex justify-between items-center p-4 bg-emerald-700 text-white shadow">
-                <h1 className="text-lg font-semibold">
+            <div className="sticky top-0 z-20 flex justify-between items-center p-2 md:p-4 bg-emerald-700 text-white shadow">
+                <h1 className="text-lg font-semibold hidden md:block">
                     {line.split("-")[1]} • {day} • {session}
                 </h1>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 ml-auto">
                     <button
                         onClick={() => setPage((p) => Math.max(p - 1, 1))}
                         className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"
                     >
                         Prev
                     </button>
-                    <span className="text-sm font-medium">Page {page}</span>
+                    <span className="text-sm font-medium hidden md:block">Page {page}</span>
+                    <span className="text-sm font-medium md:hidden">{page}</span>
                     <button
                         onClick={() => setPage((p) => p + 1)}
                         className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500"

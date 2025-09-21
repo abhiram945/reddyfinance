@@ -59,11 +59,16 @@ const LineSessions = () => {
   };
 
   const addDay = async (lineId, day) => {
+    const lineData = entries[lineId];
+    if (lineData.days && Object.keys(lineData.days).includes(day)) {
+      alert(`Day '${day.charAt(0).toUpperCase() + day.slice(1)}' already exists for this line.`);
+      return;
+    }
     setLoading("addDay");
     try {
       const lineRef = doc(db, "lines", lineId);
-      const lineData = entries[lineId];
-      const newDays = { ...lineData.days, [day]: { sessions: [], startDate: null } };
+      // Add both sessions by default
+      const newDays = { ...lineData.days, [day]: { sessions: ["morning", "afternoon"], startDate: null } };
       await updateDoc(lineRef, { days: newDays });
       setEntries(prev => ({
         ...prev,
@@ -152,12 +157,12 @@ const LineSessions = () => {
   const handlePlusClick = () => {
     if (currentView === 'lines') {
       setAddMode('line');
+      setIsModalOpen(true);
     } else if (currentView === 'days') {
       setAddMode('day');
-    } else if (currentView === 'sessions') {
-      setAddMode('session');
+      setIsModalOpen(true);
     }
-    setIsModalOpen(true);
+    // Remove add session pop up, sessions are added by default
   };
 
   return (
@@ -222,15 +227,19 @@ const LineSessions = () => {
             >
               ← Back to Days
             </button>
-            {sessionsForDay.length===0 ? <h2>No sessions found. Add a new session.</h2> :sessionsForDay.map((session) => (
-              <button
-                key={session}
-                onClick={() => handleSessionClick(session)}
-                className="py-3 px-4 bg-emerald-50 rounded-lg text-emerald-700 text-lg md:text-xl text-center font-medium hover:bg-emerald-600 hover:text-white transition-all duration-200"
-              >
-                {session.charAt(0).toUpperCase() + session.slice(1)}
-              </button>
-            ))}
+            {sessionsForDay.length === 0 ? (
+              <h2>No sessions found.</h2>
+            ) : (
+              sessionsForDay.map((session) => (
+                <button
+                  key={session}
+                  onClick={() => handleSessionClick(session)}
+                  className="py-3 px-4 bg-emerald-50 rounded-lg text-emerald-700 text-lg md:text-xl text-center font-medium hover:bg-emerald-600 hover:text-white transition-all duration-200"
+                >
+                  {session.charAt(0).toUpperCase() + session.slice(1)}
+                </button>
+              ))
+            )}
           </>
         )}
       </div>}
