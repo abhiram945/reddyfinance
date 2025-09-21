@@ -72,6 +72,17 @@ export default function LineDaySession() {
         setBorrowers(prev => [...prev, { ...newBorrower, id: docRef.id }]);
     };
     const updateBorrower = async (borrowerId, updatedData) => {
+        // If updating loan.startDate, check if it's allowed
+        if (updatedData.loan && updatedData.loan.startDate) {
+            const allowedDates = last5Weeks.map(d => {
+                const [day, month, year] = d.split("/");
+                return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+            });
+            if (!allowedDates.includes(updatedData.loan.startDate)) {
+                alert("Start date must be one of the current 5 dates shown in the table.");
+                return;
+            }
+        }
         const borrowerRef = doc(db, "lines", `${line}_${day}_${session}`, "borrowers", borrowerId);
         await updateDoc(borrowerRef, updatedData);
         setBorrowers(prev => prev.map(b => b.id === borrowerId ? { ...b, ...updatedData } : b));
